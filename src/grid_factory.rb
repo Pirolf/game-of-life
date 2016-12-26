@@ -1,4 +1,5 @@
 require './src/cell'
+require './src/patterns'
 
 class Grid
 private
@@ -8,9 +9,10 @@ public
 
   def initialize(pattern, dims)
     cells = Array.new(dims[0]) { Array.new(dims[1]) { Cell.new } }
-    pattern.each do |coords|
-      i, j = coords
-      cells[i][j].set_alive(true)
+    pattern.each_with_index do |row, i|
+      row.each_with_index do |alive, j|
+        cells[i][j].set_alive(alive == 1)
+      end
     end
 
     self.cells = cells
@@ -41,7 +43,7 @@ end
 
 class GridFactory
   def create_grid(opts = {})
-    pattern = opts[:pattern] || [[0,0],[0,1],[1,0]]
+    pattern = opts[:pattern] || Patterns::BLINKER
 
     Grid.new(pattern, opts[:dims] || [5, 5])
   end

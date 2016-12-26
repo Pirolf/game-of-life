@@ -1,6 +1,6 @@
 require 'chingu'
 require './src/grid_factory'
-require './src/cell'
+require './src/patterns'
 
 class Game < Chingu::Window
   def initialize(pattern = nil)
@@ -22,7 +22,7 @@ public
 
     @grid_cells = {}
     @grid_factory = GridFactory.new
-    @grid = @grid_factory.create_grid(pattern: [[1, 2], [2, 2], [3, 2]], dims: [5, 5])
+    @grid = @grid_factory.create_grid(pattern: Patterns::GLIDER, dims: [640/23, 480/23])
 
     every(1000) do
       @grid = @grid_factory.next_grid(@grid)
@@ -31,10 +31,14 @@ public
         row.each_with_index do |c, j|
           key = "r#{i}c#{j}".to_sym
           if c.alive
-            @grid_cells[key] ||= GridCell.create(x: (i + 0.5)*CELL_SIZE, y: (j + 0.5)*CELL_SIZE)
-            @grid_cells[key].show!
+            if !@grid_cells.has_key? key
+              @grid_cells[key] = GridCell.create(x: (i + 0.5)*CELL_SIZE, y: (j + 0.5)*CELL_SIZE)
+            end
           else
-            @grid_cells[key].hide! if @grid_cells.has_key? key
+            if @grid_cells.has_key? key
+              @grid_cells[key].destroy
+              @grid_cells.delete key
+            end
           end
         end
       end
