@@ -3,7 +3,7 @@ require './src/grid_factory'
 require './src/patterns'
 
 class Game < Chingu::Window
-  def initialize(pattern = nil)
+  def initialize
     super(640,480,false)
     push_game_state(GameOfLife)
   end
@@ -24,23 +24,22 @@ public
     @grid_factory = GridFactory.new
     @grid = @grid_factory.create_grid(pattern: Patterns::GLIDER, dims: [640/23, 480/23])
 
-    every(1000) do
-      @grid = @grid_factory.next_grid(@grid)
+    every(200) { next_generation }
+  end
 
-      @grid.cells.each_with_index do |row, i|
-        row.each_with_index do |c, j|
-          key = "r#{i}c#{j}".to_sym
-          if c.alive
-            if !@grid_cells.has_key? key
-              @grid_cells[key] = GridCell.create(x: (i + 0.5)*CELL_SIZE, y: (j + 0.5)*CELL_SIZE)
-            end
-          else
-            if @grid_cells.has_key? key
-              @grid_cells[key].destroy
-              @grid_cells.delete key
-            end
-          end
-        end
+private
+  def next_generation
+    @grid = @grid_factory.next_grid(@grid)
+
+    @grid.each_cell do |c, i, j|
+      key = "r#{i}c#{j}".to_sym
+      if c.alive && !@grid_cells.has_key?(key)
+        @grid_cells[key] = GridCell.create(x: (i + 0.5)*CELL_SIZE, y: (j + 0.5)*CELL_SIZE)
+      end
+
+      if !c.alive && @grid_cells.has_key?(key)
+        @grid_cells[key].destroy
+        @grid_cells.delete key
       end
     end
   end

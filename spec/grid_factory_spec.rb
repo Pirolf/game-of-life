@@ -13,11 +13,9 @@ RSpec.describe 'GridFactory' do
       expect(grid.cells.length).to be(3)
       expect(grid.cells[0].length).to be(4)
 
-      grid.cells.each_with_index do |row, i|
-        row.each_with_index do |cell, j|
-          alive = (i == 0 && j < 3)
-          expect(cell.alive).to be(alive)
-        end
+      grid.each_cell do |c, i, j|
+        alive = (i == 0 && j < 3)
+        expect(c.alive).to be(alive)
       end
     end
 
@@ -27,11 +25,9 @@ RSpec.describe 'GridFactory' do
       expect(grid.cells.length).to be(5)
       expect(grid.cells[0].length).to be(5)
 
-      grid.cells.each_with_index do |row, i|
-        row.each_with_index do |cell, j|
-          alive = (i == 0 && j == 1)
-          expect(cell.alive).to be(alive)
-        end
+      grid.each_cell do |c, i, j|
+        alive = (i == 0 && j == 1)
+        expect(c.alive).to be(alive)
       end
     end
 
@@ -44,22 +40,16 @@ RSpec.describe 'GridFactory' do
       expect(grid.cells.length).to be(3)
       expect(grid.cells[0].length).to be(4)
 
-      grid.cells.each_with_index do |row, i|
-        row.each_with_index do |cell, j|
-          alive = (i == 0 && j == 1 || i == 1 && j < 2)
-          expect(cell.alive).to be(alive)
-        end
+      grid.each_cell do |c, i, j|
+        alive = (i == 0 && j == 1 || i == 1 && j < 2)
+        expect(c.alive).to be(alive)
       end
     end
   end
 
   describe '#next_grid' do
-    def mock_lives(cells)
-      cells.each_with_index do |row, i|
-        row.each_with_index do |c, j|
-          allow(c).to receive(:lives?).and_return(i == j)
-        end
-      end
+    def mock_lives(grid)
+      grid.each_cell { |c, i, j| allow(c).to receive(:lives?).and_return(i == j) }
     end
 
     it 'returns the next grid' do
@@ -67,17 +57,13 @@ RSpec.describe 'GridFactory' do
         [0, 1],
         [1, 1]
       ])
-      mock_lives(grid.cells)
+      mock_lives(grid)
 
       next_grid = @factory.next_grid(grid)
 
       expect { grid }.not_to change(grid, :cells)
 
-      next_grid.cells.each_with_index do |row, i|
-        row.each_with_index do |cell, j|
-          expect(cell.alive).to be(i == j)
-        end
-      end
+      next_grid.each_cell { |c, i, j| expect(c.alive).to be(i == j) }
     end
   end
 end
