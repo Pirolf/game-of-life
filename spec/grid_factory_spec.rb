@@ -45,11 +45,42 @@ RSpec.describe 'GridFactory' do
         expect(c.alive).to be(alive)
       end
     end
+
+    it 'creates a nested grid' do
+      grid = factory.create_grid(pattern: [
+        [0, 1]
+      ], dims: [1, 2], depth: 2)
+
+      expect(grid.depth).to be(2)
+
+      expect(grid.cells.length).to be(1)
+      expect(grid.cells[0].length).to be(2)
+
+      expect(grid.cells[0][0].alive).to be(false)
+      expect(grid.cells[0][1].alive).to be(true)
+
+      expect(grid.cells[0][0].depth).to be(1)
+      expect(grid.cells[0][1].depth).to be(1)
+
+      [0,1].map { |j| grid.cells[0][j] }.each do |c|
+        expect(c.cells.length).to be(1)
+        expect(c.cells[0].length).to be(2)
+
+        expect(c.cells[0][0].alive).to be(false)
+        expect(c.cells[0][1].alive).to be(true)
+
+        expect(c.cells[0][0].cells).to be_nil
+        expect(c.cells[0][1].cells).to be_nil
+      end
+    end
   end
 
   describe '#next_grid' do
     def mock_lives(grid)
-      grid.each_cell { |c, i, j| allow(c).to receive(:lives?).and_return(i == j) }
+      grid.each_cell do |c, i, j|
+        allow(c).to receive(:lives?).and_return(i == j)
+        allow(c).to receive(:next).and_return(c)
+      end
     end
 
     it 'returns the next grid' do
@@ -62,7 +93,6 @@ RSpec.describe 'GridFactory' do
       next_grid = @factory.next_grid(grid)
 
       expect { grid }.not_to change(grid, :cells)
-
       next_grid.each_cell { |c, i, j| expect(c.alive).to be(i == j) }
     end
   end
