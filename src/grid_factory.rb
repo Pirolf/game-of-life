@@ -1,37 +1,33 @@
 require './src/cell'
-require './src/organism'
 require './src/patterns'
 
 class Grid
-  include Organism
 
 private
-  attr_writer :cells, :dims, :depth, :pattern
+  attr_writer :alive, :cells, :dims, :depth, :pattern, :ancestor_alive
 public
-  attr_reader :cells, :dims, :depth, :pattern
+  attr_reader :alive, :cells, :dims, :depth, :pattern, :ancestor_alive
 
   def initialize(pattern, dims, alive = false, depth = 1)
-    super(alive)
-
+    self.alive = alive
     self.pattern = pattern
     self.depth = depth
-    self.create_cells(pattern, dims, alive, depth)
+    self.cells = [[[Cell.new(alive, 0)]]]
+    self.dims = dims
   end
 
-  def next(grid, depth = 1)
-    return self if depth <= 0
-
-    self.each_cell do |c, i, j|
-      next_cell = grid.cells[i][j]
-      next_cell.set_alive(c.lives? neighbours(i, j))
-
-      next_cell = c.next(
-        Grid.new([], c.dims, false, depth-1),
-        depth-1
-      )
+  def next(next_grid)
+    self.cells[1..-1].each_with_index do |level_cells, level_index|
+      level = level_index + 1
+      level_cells.each_with_index do |row, i|
+        row.each_with_index do |cell, j|
+          next_cell = next_grid.cells[level][i][j]
+          next_cell.set_alive(cell.lives? neighbours(level, i, j))
+        end
+      end
     end
 
-    grid
+    next_grid
   end
 
   def each_cell
@@ -44,38 +40,43 @@ public
     end
   end
 
-  def all_cells(r_offset = 0, c_offset = 0, &block)
-    self.each_cell do |c, i, j|
-      if c.cells.nil?
-        yield c, i + r_offset, j + c_offset
-      else
-        c.all_cells(i * self.dims[0], j * self.dims[1], &block)
-      end
-    end
-  end
+  def each_cell_by_level
+    return if !block_given?
 
-protected
-  def create_cells(pattern, dims, alive, depth)
-    return if depth <= 0
-    cells = Array.new(dims[0]) { Array.new(dims[1]) { Grid.new(pattern, dims, false, depth-1) } }
-    
-    pattern.each_with_index do |row, i|
-      row.each_with_index do |child_alive, j|
-        cells[i][j].set_alive(child_alive == 1)
-      end
-    end
+    q = self.cells.flatten.map { |c| { grid: c, parent_alive: self.alive } }
 
-    self.cells = cells
-    self.dims = dims
+    index_in_level = 0
+    level = -1
+    depth = self.depth
+
+    while q.any?
+      first = q.shift
+      g = first[:grid]
+
+      if g.depth != depth
+        depth = g.depth
+        index_in_level = 0
+        level += 1
+      end
+
+      yield g, index_in_level, level, first[:parent_alive]
+
+      if !g.cells.nil?
+        g.each_cell { |c| q.push({ grid: c, parent_alive: g.alive }) }
+      end
+
+      index_in_level += 1
+    end
   end
 
 private
-  def neighbours(i, j)
-    rows = (i-1..i+1).map { |r| r % @cells.length }
-    cols = (j-1..j+1).map { |c| c % @cells[0].length }
+  def neighbours(level, i, j)
+    level_cells = self.cells[level]
+    rows = (i-1..i+1).map { |r| r % level_cells.length }
+    cols = (j-1..j+1).map { |c| c % level_cells[0].length }
 
     rows.reduce([]) do |memo, r|
-      cols.each { |c| memo.push @cells[r][c] if !(r == i && c == j) }
+      cols.each { |c| memo.push level_cells[r][c] if !(r == i && c == j) }
       memo
     end
   end
@@ -83,15 +84,46 @@ end
 
 class GridFactory
   def create_grid(opts = {})
-    pattern = opts[:pattern] || Patterns::BLINKER
+    pattern = opts[:pattern] || []
     dims = opts[:dims] || [5, 5]
     depth = opts[:depth] || 1
 
-    Grid.new(pattern, dims, false, depth)
+    root = Grid.new(pattern, dims, true, depth)
+
+    (1..depth).each do |level|
+      n_rows, n_cols = [0, 1].map { |i| dims[i]**level }
+
+      current_level_cells = Array.new(n_rows) { Array.new(n_cols) { Cell.new(false, level) } }
+
+      root.cells[level] = current_level_cells
+
+      pattern.each_with_index do |row, i|
+        row.each_with_index do |alive, j|
+          grid_row = i
+          while grid_row < current_level_cells.length
+            grid_col = j
+            while grid_col < current_level_cells[0].length
+              current_level_cells[grid_row][grid_col].set_alive(alive == 1)
+              grid_col += dims[1]
+            end
+            grid_row += dims[0]
+          end
+        end
+      end
+
+      current_level_cells.each_with_index do |row, i|
+        row.each_with_index do |cell, j|
+          cell.parent = root.cells[level-1][i/dims[0]][j/dims[1]]
+        end
+      end
+
+    end
+
+    root
   end
 
   def next_grid(grid)
-    new_grid = self.create_grid(pattern: grid.pattern, dims: grid.dims, depth: grid.depth)
-    grid.next(new_grid, new_grid.depth)
+    new_grid = self.create_grid(pattern: [], dims: grid.dims, depth: grid.depth)
+    grid.next(new_grid)
   end
 end

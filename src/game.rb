@@ -4,7 +4,7 @@ require './src/patterns'
 
 class Game < Chingu::Window
   def initialize
-    super(640,480,false)
+    super(640,640,false)
     push_game_state(GameOfLife)
   end
 end
@@ -15,82 +15,84 @@ class GameOfLife < Chingu::GameState
   CELL_SIZE = 23
 
 private
-  attr_accessor :grid, :grid_factory, :grid_map, :game_width, :game_height, :max_level
-
+  attr_writer :grid, :grid_factory, :grid_map, :game_width, :game_height, :max_level
 public
+  attr_reader :grid, :grid_factory, :grid_map, :game_width, :game_height, :max_level
+
   def initialize
     super
 
     self.game_width = 640
-    self.game_height = 480
+    self.game_height = 640
     self.max_level = 3
-    self.grid_map = {}
-    self.grid_factory = GridFactory.new
-    self.grid = self.grid_factory.create_grid(pattern: Patterns::GLIDER, dims: [8, 8])
+    self.grid_map = Array.new
 
-    every(200) { next_generation }
+    self.max_level.times do |i|
+      self.grid_map.push Chingu::GameObjectList.new
+    end
   end
 
   def setup
     super
-    self.max_level.times { |i| self.grid_map[i] = Chingu::GameObjectList.new }
+
+    self.grid_factory = GridFactory.new
+    dims = [5, 5]
+    @grid = self.grid_factory.create_grid(pattern: Patterns::GLIDER, dims: dims, depth: self.max_level)
+
+    @grid.cells[1..-1].each_with_index do |level_cells, level|
+      level_index = level + 1
+      cell_width = 640/dims[0]**level_index
+
+      level_cells.each_with_index do |row, i|
+        row.each_with_index do |c, j|
+          g = GridCell.create grid: c, x: (j + 0.5)*cell_width, y: (i + 0.5)*cell_width, zorder: i, scale: cell_width/CELL_SIZE.to_f
+
+          self.grid_map[level].add_game_object g
+        end
+      end
+    end
+
+    every(1000) { next_generation }
   end
 
   def draw
-    super
-    @grid_map.each do |grids|
-      grids.draw
+    draw_map = []
+    @grid.cells[1..-1].each_with_index do |level_cells, level|
+      if level > draw_map.length - 1
+        draw_map.push []
+      end
+
+      level_cells.each_with_index do |row, i|
+        row.each_with_index do |c, j|
+          draw_map[level].push(c.ancestor_alive? && c.alive)
+        end
+      end
+    end
+
+    self.grid_map.each_with_index do |level_cells, level|
+      level_cells.each_with_index do |c, i|
+        if draw_map[level][i]
+          c.draw
+        end
+      end
     end
   end
 
 private
   def next_generation
-    @grid = @grid_factory.next_grid(@grid, self.max_level)
-    root_dims = @grid.dims
-
-    @grid.each_cell_by_level do |c, i, j|
-      # cell_width, cell_height = [
-      #   {game_d: game_width, root_d: root_dims[0]},
-      #   {game_d: game_height, root_d: root_dims[1]},
-      # ].map do |dims_data|
-      #   dims_data[:game_d]/(dims_data[:root_d]**(self.max_level - c.depth))
-      # end
-      cell_width = 128
-      cell_height = 128
-      grid_cell = GridCell.create grid: c, x: (i + 0.5)*cell_width, y: (j + 0.5)*cell_height
-
-      @grid_map[c.depth].add_game_object grid_cell
-      # key = "r#{i}c#{j}".to_sym
-      # if c.alive && !@grid_cells.has_key?(key)
-      #   @grid_cells[key] = GridCell.create(x: (i + 0.5)*CELL_SIZE, y: (j + 0.5)*CELL_SIZE)
-      # end
-      #
-      # if !c.alive && @grid_cells.has_key?(key)
-      #   @grid_cells[key].destroy
-      #   @grid_cells.delete key
-      # end
-    end
+    @grid = @grid_factory.next_grid(@grid)
   end
 end
 
 class GridCell < Chingu::GameObject
-  trait :sprite
-  attr_accessor :should_draw, :grid
+  attr_accessor :grid
 
   def setup
     super
-    self.image = "poop.png"
-    self.should_draw = false
-  end
-
-  def draw
-    return if !self.should_draw
-
-    Gosu::translate(x, y) do
-      Gosu::scale(scaler) do
-        super
-      end
-    end
+    colors = [0xff00aaff, 0xff5500ff, 0xff0000ff]
+    self.image = "white_poop.png"
+    self.grid = options[:grid]
+    self.color = colors[self.grid.level-1]
   end
 end
 

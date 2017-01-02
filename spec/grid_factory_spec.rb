@@ -8,41 +8,38 @@ RSpec.describe 'GridFactory' do
   let(:factory) { @factory = GridFactory.new }
 
   describe '#create_grid' do
-    it 'creates a grid with default cells' do
+    it 'creates a grid with default all dead cells' do
       grid = factory.create_grid(dims: [3, 4])
-      expect(grid.cells.length).to be(3)
-      expect(grid.cells[0].length).to be(4)
+      expect(grid.cells.length).to be(2)
 
-      grid.each_cell do |c, i, j|
-        alive = (i == 0 && j < 3)
-        expect(c.alive).to be(alive)
+      expect(grid.cells[0].length).to be(1)
+      expect(grid.cells[1].length).to be(3)
+      expect(grid.cells[1][0].length).to be(4)
+
+      expect(grid.cells[0][0][0].alive).to be(true)
+      grid.cells[1].each_with_index do |row, i|
+        row.each_with_index do |cell, j|
+          expect(cell.alive).to be(false)
+        end
       end
     end
 
-    it 'creates a grid with default dimensions' do
-      grid = factory.create_grid(pattern: [[0, 1]])
-
-      expect(grid.cells.length).to be(5)
-      expect(grid.cells[0].length).to be(5)
-
-      grid.each_cell do |c, i, j|
-        alive = (i == 0 && j == 1)
-        expect(c.alive).to be(alive)
-      end
-    end
-
-    it 'creates a grid with custom cells and dimensions' do
+    it 'creates single level grid' do
       grid = factory.create_grid(pattern: [
         [0, 1],
         [1, 1]
       ], dims: [3, 4])
 
-      expect(grid.cells.length).to be(3)
-      expect(grid.cells[0].length).to be(4)
+      expect(grid.cells.length).to be(2)
 
-      grid.each_cell do |c, i, j|
-        alive = (i == 0 && j == 1 || i == 1 && j < 2)
-        expect(c.alive).to be(alive)
+      expect(grid.cells[1].length).to be(3)
+      expect(grid.cells[1][0].length).to be(4)
+
+      grid.cells[1].each_with_index do |row, i|
+        row.each_with_index do |cell, j|
+          alive = (i == 0 && j == 1 || i == 1 && j < 2)
+          expect(cell.alive).to be(alive)
+        end
       end
     end
 
@@ -51,35 +48,48 @@ RSpec.describe 'GridFactory' do
         [0, 1]
       ], dims: [1, 2], depth: 2)
 
-      expect(grid.depth).to be(2)
+      expect(grid.cells.count).to be(3)
+      expect(grid.cells[0].length).to be(1)
 
-      expect(grid.cells.length).to be(1)
-      expect(grid.cells[0].length).to be(2)
+      expect(grid.cells[1].length).to be(1)
+      expect(grid.cells[1][0].length).to be(2)
+      expect(grid.cells[1][0][0].alive).to be(false)
+      expect(grid.cells[1][0][1].alive).to be(true)
 
-      expect(grid.cells[0][0].alive).to be(false)
-      expect(grid.cells[0][1].alive).to be(true)
+      expect(grid.cells[1][0][0].parent).to equal(grid.cells[0][0][0])
+      expect(grid.cells[1][0][1].parent).to equal(grid.cells[0][0][0])
 
-      expect(grid.cells[0][0].depth).to be(1)
-      expect(grid.cells[0][1].depth).to be(1)
+      expect(grid.cells[1][0][0].level).to be(1)
+      expect(grid.cells[1][0][1].level).to be(1)
 
-      [0,1].map { |j| grid.cells[0][j] }.each do |c|
-        expect(c.cells.length).to be(1)
-        expect(c.cells[0].length).to be(2)
+      expect(grid.cells[2][0].length).to be(4)
+      expect(grid.cells[2][0][0].alive).to be(false)
+      expect(grid.cells[2][0][1].alive).to be(true)
+      expect(grid.cells[2][0][2].alive).to be(false)
+      expect(grid.cells[2][0][3].alive).to be(true)
 
-        expect(c.cells[0][0].alive).to be(false)
-        expect(c.cells[0][1].alive).to be(true)
+      expect(grid.cells[2][0][0].parent).to eq(grid.cells[1][0][0])
+      expect(grid.cells[2][0][1].parent).to eq(grid.cells[1][0][0])
+      expect(grid.cells[2][0][2].parent).to eq(grid.cells[1][0][1])
+      expect(grid.cells[2][0][3].parent).to eq(grid.cells[1][0][1])
 
-        expect(c.cells[0][0].cells).to be_nil
-        expect(c.cells[0][1].cells).to be_nil
+      (0..1).each do |level|
+        grid.cells[level][0].each do |c|
+          expect(c.level).to be(level)
+        end
       end
     end
   end
 
   describe '#next_grid' do
     def mock_lives(grid)
-      grid.each_cell do |c, i, j|
-        allow(c).to receive(:lives?).and_return(i == j)
-        allow(c).to receive(:next).and_return(c)
+      grid.cells.each do |cells|
+        cells.each_with_index do |row, i|
+          row.each_with_index do |c, j|
+            allow(c).to receive(:lives?).and_return(i == j)
+            allow(c).to receive(:next).and_return(c)
+          end
+        end
       end
     end
 
@@ -93,7 +103,15 @@ RSpec.describe 'GridFactory' do
       next_grid = @factory.next_grid(grid)
 
       expect { grid }.not_to change(grid, :cells)
-      next_grid.each_cell { |c, i, j| expect(c.alive).to be(i == j) }
+
+      next_grid.cells.each do |cells|
+        cells.each_with_index do |row, i|
+          row.each_with_index do |c, j|
+            expect(c.alive).to be(i == j)
+          end
+        end
+      end
+
     end
   end
 end

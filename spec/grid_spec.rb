@@ -25,127 +25,108 @@ RSpec.describe 'Grid' do
 
   describe '#next' do
     before(:each) do
-      @grid = Grid.new([[0,0], [1,1]], [3,3])
-      @grid.each_cell do |c|
-        allow(c).to receive(:lives?).and_return(true)
-      end
-
-      @next_grid = Grid.new([], @grid.dims)
-    end
-
-    context 'grid is nested' do
-      before(:each) { @grid.each_cell { |c| allow(c).to receive(:next).and_return(c) } }
-
-      it 'recursively calls next on the cells' do
-        @grid.next(@next_grid, 1)
-        @grid.each_cell do |c|
-          expect(c).to have_received(:next)
+      factory = GridFactory.new
+      @grid = factory.create_grid(pattern: [[0,0], [1,1]], dims: [3,3])
+      @grid.cells.each do |level_cells|
+        level_cells.each do |row|
+          row.each do |c|
+            allow(c).to receive(:lives?).and_return(true)
+          end
         end
       end
+
+      @next_grid = factory.create_grid(pattern: [], dims: @grid.dims)
     end
 
     it 'calls live? on every cell' do
       @grid.next(@next_grid)
       cells = @grid.cells
 
-      expect(cells[0][0]).to have_received(:lives?).with([
-        cells[2][2], cells[2][0], cells[2][1],
-        cells[0][2], cells[0][1],
-        cells[1][2], cells[1][0], cells[1][1]
+      expect(cells[0][0][0]).not_to have_received(:lives?)
+
+      level1_cells = cells[1]
+
+      expect(level1_cells[0][0]).to have_received(:lives?).with([
+        level1_cells[2][2], level1_cells[2][0], level1_cells[2][1],
+        level1_cells[0][2], level1_cells[0][1],
+        level1_cells[1][2], level1_cells[1][0], level1_cells[1][1]
       ])
-      expect(cells[0][1]).to have_received(:lives?).with([
-        cells[2][0], cells[2][1], cells[2][2],
-        cells[0][0], cells[0][2],
-        cells[1][0], cells[1][1], cells[1][2]
+      expect(level1_cells[0][1]).to have_received(:lives?).with([
+        level1_cells[2][0], level1_cells[2][1], level1_cells[2][2],
+        level1_cells[0][0], level1_cells[0][2],
+        level1_cells[1][0], level1_cells[1][1], level1_cells[1][2]
       ])
-      expect(cells[0][2]).to have_received(:lives?).with([
-        cells[2][1], cells[2][2], cells[2][0],
-        cells[0][1], cells[0][0],
-        cells[1][1], cells[1][2], cells[1][0]
+      expect(level1_cells[0][2]).to have_received(:lives?).with([
+        level1_cells[2][1], level1_cells[2][2], level1_cells[2][0],
+        level1_cells[0][1], level1_cells[0][0],
+        level1_cells[1][1], level1_cells[1][2], level1_cells[1][0]
       ])
-      expect(cells[1][0]).to have_received(:lives?).with([
-        cells[0][2], cells[0][0], cells[0][1],
-        cells[1][2], cells[1][1],
-        cells[2][2], cells[2][0], cells[2][1]
+      expect(level1_cells[1][0]).to have_received(:lives?).with([
+        level1_cells[0][2], level1_cells[0][0], level1_cells[0][1],
+        level1_cells[1][2], level1_cells[1][1],
+        level1_cells[2][2], level1_cells[2][0], level1_cells[2][1]
       ])
-      expect(cells[1][1]).to have_received(:lives?).with([
-        cells[0][0], cells[0][1], cells[0][2],
-        cells[1][0], cells[1][2],
-        cells[2][0], cells[2][1], cells[2][2]
+      expect(level1_cells[1][1]).to have_received(:lives?).with([
+        level1_cells[0][0], level1_cells[0][1], level1_cells[0][2],
+        level1_cells[1][0], level1_cells[1][2],
+        level1_cells[2][0], level1_cells[2][1], level1_cells[2][2]
       ])
-      expect(cells[1][2]).to have_received(:lives?).with([
-        cells[0][1], cells[0][2], cells[0][0],
-        cells[1][1], cells[1][0],
-        cells[2][1], cells[2][2], cells[2][0]
+      expect(level1_cells[1][2]).to have_received(:lives?).with([
+        level1_cells[0][1], level1_cells[0][2], level1_cells[0][0],
+        level1_cells[1][1], level1_cells[1][0],
+        level1_cells[2][1], level1_cells[2][2], level1_cells[2][0]
       ])
-      expect(cells[2][0]).to have_received(:lives?).with([
-        cells[1][2], cells[1][0], cells[1][1],
-        cells[2][2], cells[2][1],
-        cells[0][2], cells[0][0], cells[0][1],
+      expect(level1_cells[2][0]).to have_received(:lives?).with([
+        level1_cells[1][2], level1_cells[1][0], level1_cells[1][1],
+        level1_cells[2][2], level1_cells[2][1],
+        level1_cells[0][2], level1_cells[0][0], level1_cells[0][1],
       ])
-      expect(cells[2][1]).to have_received(:lives?).with([
-        cells[1][0], cells[1][1], cells[1][2],
-        cells[2][0], cells[2][2],
-        cells[0][0], cells[0][1], cells[0][2],
+      expect(level1_cells[2][1]).to have_received(:lives?).with([
+        level1_cells[1][0], level1_cells[1][1], level1_cells[1][2],
+        level1_cells[2][0], level1_cells[2][2],
+        level1_cells[0][0], level1_cells[0][1], level1_cells[0][2],
       ])
-      expect(cells[2][2]).to have_received(:lives?).with([
-        cells[1][1], cells[1][2], cells[1][0],
-        cells[2][1], cells[2][0],
-        cells[0][1], cells[0][2], cells[0][0]
+      expect(level1_cells[2][2]).to have_received(:lives?).with([
+        level1_cells[1][1], level1_cells[1][2], level1_cells[1][0],
+        level1_cells[2][1], level1_cells[2][0],
+        level1_cells[0][1], level1_cells[0][2], level1_cells[0][0]
       ])
     end
   end
 
-  describe '#all_cells' do
+  describe '#each_cell_by_level' do
     before(:each) do
-      @grid = Grid.new([
-        [0,1]
-      ], [3,2], false, 2)
+      @grid = Grid.new([[1,1], [1,1]], [2, 2], true, 2)
+      @grid.cells[0][1].set_alive false
+      @grid.cells[1][0].set_alive false
     end
 
-    it 'yields for all cell descendents' do
-      expect{ |b| @grid.all_cells(&b) }.to yield_successive_args(
-        [@grid.cells[0][0].cells[0][0], 0, 0],
-        [@grid.cells[0][0].cells[0][1], 0, 1],
-        [@grid.cells[0][0].cells[1][0], 1, 0],
-        [@grid.cells[0][0].cells[1][1], 1, 1],
-        [@grid.cells[0][0].cells[2][0], 2, 0],
-        [@grid.cells[0][0].cells[2][1], 2, 1],
+    it 'yeilds by level' do
+      expect{ |b| @grid.each_cell_by_level(&b) }.to yield_successive_args(
+        [@grid.cells[0][0], 0, 0, true],
+        [@grid.cells[0][1], 1, 0, true],
+        [@grid.cells[1][0], 2, 0, true],
+        [@grid.cells[1][1], 3, 0, true],
 
-        [@grid.cells[0][1].cells[0][0], 0, 2],
-        [@grid.cells[0][1].cells[0][1], 0, 3],
-        [@grid.cells[0][1].cells[1][0], 1, 2],
-        [@grid.cells[0][1].cells[1][1], 1, 3],
-        [@grid.cells[0][1].cells[2][0], 2, 2],
-        [@grid.cells[0][1].cells[2][1], 2, 3],
+        [@grid.cells[0][0].cells[0][0], 0, 1, true],
+        [@grid.cells[0][0].cells[0][1], 1, 1, true],
+        [@grid.cells[0][0].cells[1][0], 2, 1, true],
+        [@grid.cells[0][0].cells[1][1], 3, 1, true],
 
-        [@grid.cells[1][0].cells[0][0], 3, 0],
-        [@grid.cells[1][0].cells[0][1], 3, 1],
-        [@grid.cells[1][0].cells[1][0], 4, 0],
-        [@grid.cells[1][0].cells[1][1], 4, 1],
-        [@grid.cells[1][0].cells[2][0], 5, 0],
-        [@grid.cells[1][0].cells[2][1], 5, 1],
+        [@grid.cells[0][1].cells[0][0], 4, 1, false],
+        [@grid.cells[0][1].cells[0][1], 5, 1, false],
+        [@grid.cells[0][1].cells[1][0], 6, 1, false],
+        [@grid.cells[0][1].cells[1][1], 7, 1, false],
 
-        [@grid.cells[1][1].cells[0][0], 3, 2],
-        [@grid.cells[1][1].cells[0][1], 3, 3],
-        [@grid.cells[1][1].cells[1][0], 4, 2],
-        [@grid.cells[1][1].cells[1][1], 4, 3],
-        [@grid.cells[1][1].cells[2][0], 5, 2],
-        [@grid.cells[1][1].cells[2][1], 5, 3],
+        [@grid.cells[1][0].cells[0][0], 8, 1, false],
+        [@grid.cells[1][0].cells[0][1], 9, 1, false],
+        [@grid.cells[1][0].cells[1][0], 10, 1, false],
+        [@grid.cells[1][0].cells[1][1], 11, 1, false],
 
-        [@grid.cells[2][0].cells[0][0], 6, 0],
-        [@grid.cells[2][0].cells[0][1], 6, 1],
-        [@grid.cells[2][0].cells[1][0], 7, 0],
-        [@grid.cells[2][0].cells[1][1], 7, 1],
-        [@grid.cells[2][0].cells[2][0], 8, 0],
-        [@grid.cells[2][0].cells[2][1], 8, 1],
-
-        [@grid.cells[2][1].cells[0][0], 6, 2],
-        [@grid.cells[2][1].cells[0][1], 6, 3],
-        [@grid.cells[2][1].cells[1][0], 7, 2],
-        [@grid.cells[2][1].cells[1][1], 7, 3],
-        [@grid.cells[2][1].cells[2][0], 8, 2],
-        [@grid.cells[2][1].cells[2][1], 8, 3],
+        [@grid.cells[1][1].cells[0][0], 12, 1, true],
+        [@grid.cells[1][1].cells[0][1], 13, 1, true],
+        [@grid.cells[1][1].cells[1][0], 14, 1, true],
+        [@grid.cells[1][1].cells[1][1], 15, 1, true]
       )
     end
   end
