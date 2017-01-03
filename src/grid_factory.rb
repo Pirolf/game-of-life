@@ -4,68 +4,35 @@ require './src/patterns'
 class Grid
 
 private
-  attr_writer :alive, :cells, :dims, :depth, :pattern, :ancestor_alive
+  attr_writer :alive, :cells, :dims, :depth, :pattern
 public
-  attr_reader :alive, :cells, :dims, :depth, :pattern, :ancestor_alive
+  attr_reader :alive, :cells, :dims, :depth, :pattern
 
   def initialize(pattern, dims, alive = false, depth = 1)
     self.alive = alive
     self.pattern = pattern
     self.depth = depth
-    self.cells = [[[Cell.new(alive, 0)]]]
+    self.cells = []
     self.dims = dims
   end
 
   def next(next_grid)
-    self.cells[1..-1].each_with_index do |level_cells, level_index|
-      level = level_index + 1
-      level_cells.each_with_index do |row, i|
-        row.each_with_index do |cell, j|
-          next_cell = next_grid.cells[level][i][j]
-          next_cell.set_alive(cell.lives? neighbours(level, i, j))
-        end
-      end
+    self.each_cell_by_level do |c, i, j, level|
+      next_cell = next_grid.cells[level][i][j]
+      next_cell.set_alive(c.lives? neighbours(level, i, j))
     end
 
     next_grid
   end
 
-  def each_cell
-    return if !block_given?
-
-    @cells.each_with_index do |row, i|
-      row.each_with_index do |c, j|
-        yield c, i, j
-      end
-    end
-  end
-
   def each_cell_by_level
     return if !block_given?
-
-    q = self.cells.flatten.map { |c| { grid: c, parent_alive: self.alive } }
-
-    index_in_level = 0
-    level = -1
-    depth = self.depth
-
-    while q.any?
-      first = q.shift
-      g = first[:grid]
-
-      if g.depth != depth
-        depth = g.depth
-        index_in_level = 0
-        level += 1
+    self.cells.each_with_index do |level_cells, level|
+      level_cells.each_with_index do |row, i|
+        row.each_with_index do |c, j|
+          yield c, i, j, c.level
+        end
       end
-
-      yield g, index_in_level, level, first[:parent_alive]
-
-      if !g.cells.nil?
-        g.each_cell { |c| q.push({ grid: c, parent_alive: g.alive }) }
-      end
-
-      index_in_level += 1
     end
   end
 
@@ -90,8 +57,8 @@ class GridFactory
 
     root = Grid.new(pattern, dims, true, depth)
 
-    (1..depth).each do |level|
-      n_rows, n_cols = [0, 1].map { |i| dims[i]**level }
+    depth.times do |level|
+      n_rows, n_cols = [0, 1].map { |i| dims[i]**(level+1) }
 
       current_level_cells = Array.new(n_rows) { Array.new(n_cols) { Cell.new(false, level) } }
 
@@ -113,6 +80,7 @@ class GridFactory
 
       current_level_cells.each_with_index do |row, i|
         row.each_with_index do |cell, j|
+          next if level == 0
           cell.parent = root.cells[level-1][i/dims[0]][j/dims[1]]
         end
       end
