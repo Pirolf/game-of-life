@@ -1,4 +1,5 @@
 require 'chingu'
+require 'gosu'
 require './src/grid_factory'
 require './src/patterns'
 
@@ -12,7 +13,7 @@ end
 class GameOfLife < Chingu::GameState
   traits :timer
 
-  CELL_SIZE = 23
+  CELL_SIZE = 100
 
 private
   attr_writer :grid, :grid_factory, :grid_map, :game_width, :game_height, :max_level
@@ -36,8 +37,8 @@ public
     @grid = self.grid_factory.create_grid(pattern: Patterns::GLIDER, dims: dims, depth: self.max_level)
 
     @grid.each_cell_by_level do |c, i, j, level|
-      cell_width = 640/dims[0]**(level+1)
-      g = GridCell.create grid: c, x: (j + 0.5)*cell_width, y: (i + 0.5)*cell_width, zorder: i, scale: cell_width/CELL_SIZE.to_f
+      cell_width = 640/dims[0]**(level+1).to_f
+      g = GridCell.create level: level, x: (j + 0.5)*cell_width, y: (i + 0.5)*cell_width, zorder: i, scale: cell_width/CELL_SIZE.to_f
 
       self.grid_map[level].add_game_object g
     end
@@ -65,14 +66,11 @@ private
 end
 
 class GridCell < Chingu::GameObject
-  attr_accessor :grid
-
   def setup
     super
-    colors = [0xff00aaff, 0xff5500ff, 0xff0000ff]
-    self.image = "white_poop.png"
-    self.grid = options[:grid]
-    self.color = colors[self.grid.level]
+    colors = [Gosu::Color::WHITE, Gosu::Color::BLUE, Gosu::Color::RED]
+    self.image = "grey_box.png"
+    self.color = colors[options[:level]]
   end
 end
 
